@@ -1,3 +1,3 @@
 <?php
 
-$app->map('/api/product/{id}', 'ProductAPI', ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);
+$app->map('/api/login', 'Auth\AuthAPI', ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']);

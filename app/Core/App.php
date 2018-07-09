@@ -158,7 +158,7 @@ class App
         return $callable($response);
     }
 
-    protected function respond($response)
+    public function respond($response)
     {
         if (!$response instanceof Response) {
             echo $response;

@@ -2,7 +2,9 @@
 
 namespace App\Controllers;
 
+use App\Core\Hash;
 use App\Core\Token;
+use App\Core\Config;
 use App\Core\Session;
 use App\Core\Controller;
 
@@ -16,8 +18,8 @@ class HomeController extends Controller
         // // $user2 = $this->getModel()->find('deveplon');
         // $mail = new Mail;
         // $message = $mail->send('deveplon@gmail.com', 'Say Hello');
-        $token = new Token;
-        $test = $token->check('d78ef77d9a8d8c6827e71f35a104e50c');
+        $token = new Hash;
+        $test = $token->make('vale1988');
         var_dump($test);die;
         return $response->view('home')
             ->with([

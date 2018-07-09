@@ -45,17 +45,14 @@ class Model
 
     protected function get()
     {
-        $fields = !empty($this->fields) ? $this->fields : '*';
-        $this->stmt = "SELECT $fields FROM $this->table t";
-        $this->prepareJoins();
-        $this->prepareFilters();
-        $this->prepareOrders();
-        $this->prepareLimitOffset();
-        $this->db->query($this->stmt);
-        $this->bindParams();
-        $this->bindFilters();
-        $this->cleanRequestParams();
+        $this->proccessGet();
         return $this->db->resultSet();
+    }
+
+    protected function findOne()
+    {
+        $this->proccessGet();
+        return $this->db->single();
     }
 
     protected function create()
@@ -72,11 +69,14 @@ class Model
 
     protected function update()
     {
-        $stmt = "UPDATE table_name
-                SET column1 = value1, column2 = value2, ...
-                WHERE condition;";
+        $this->stmt = "UPDATE $this->table t SET ";
+        $this->prepareUpdateParams();
+        $this->prepareFilters();
         $this->db->query($this->stmt);
-        return $this->db->excecute();
+        $this->bindParams();
+        $this->bindFilters();
+        $this->cleanRequestParams();
+        return $this->db->execute();
     }
 
     protected function delete()
@@ -84,7 +84,7 @@ class Model
         $stmt = "DELETE FROM table_name
                 WHERE condition;";
         $this->db->query($this->stmt);
-        return $this->db->excecute();
+        return $this->db->execute();
     }
 
     protected function setRequestParams($params)
@@ -126,6 +126,19 @@ class Model
 
         $this->stmt = rtrim($this->stmt, ', ');
         $this->stmt .= ')';
+    }
+
+    private function prepareUpdateParams($bind = false)
+    {
+        if (empty($this->params)) {
+            return;
+        }
+
+        foreach ($this->params as $key => $value) {
+            $this->stmt .= $key . '=:' . $key . ', ';
+        }
+
+        $this->stmt = rtrim($this->stmt, ', ');
     }
 
     private function prepareFilters()
@@ -185,5 +198,19 @@ class Model
             $value = $this->filters['value'];
             $this->db->bind($bind, $value);
         }
+    }
+
+    private function proccessGet()
+    {
+        $fields = !empty($this->fields) ? $this->fields : '*';
+        $this->stmt = "SELECT $fields FROM $this->table t";
+        $this->prepareJoins();
+        $this->prepareFilters();
+        $this->prepareOrders();
+        $this->prepareLimitOffset();
+        $this->db->query($this->stmt);
+        $this->bindParams();
+        $this->bindFilters();
+        $this->cleanRequestParams();
     }
 }

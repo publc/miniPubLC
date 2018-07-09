@@ -23,27 +23,37 @@ class Controller
         }
     }
 
-    public function get()
+    protected function get()
     {
-        return $this->modelClass->get();
+        $model = $this->getModel();
+        return $model->get();
     }
 
-    public function create()
+    protected function find($value)
     {
-        return $this->modelClass->create();
+        $model = $this->getModel();
+        return $model->find($value);
     }
 
-    public function update()
+    protected function create($params = array())
     {
-        return $this->modelClass->update();
+        $model = $this->getModel();
+        return $model->create($params);
     }
 
-    public function delete()
+    protected function update($params = array())
     {
-        return $this->modelClass->delete();
+        $model = $this->getModel();
+        return $model->update($params);
     }
 
-    public function getModel($model = null)
+    protected function delete($params = array())
+    {
+        $model = $this->getModel();
+        return $model->delete($params);
+    }
+
+    protected function getModel($model = null)
     {
         if (is_null($model)) {
             $model = $this->model;

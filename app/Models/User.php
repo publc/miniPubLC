@@ -6,7 +6,7 @@ use App\Core\Model;
 
 class User extends Model
 {
-    // protected $table = "users";
+    protected $table = "users";
 
     public function get()
     {
@@ -15,13 +15,14 @@ class User extends Model
 
     public function find($value)
     {
+        $params['db_method'] = 'single';
         $params['filters'] = [
-            'filter' => 'username',
+            'filter' => 'email',
             'op' => '=',
             'value' => $value
         ];
         parent::setRequestParams($params);
-        return parent::get();
+        return parent::findOne();
     }
 
     public function create($params = array())
@@ -32,5 +33,11 @@ class User extends Model
 
         parent::setRequestParams($params);
         return parent::create();
+    }
+
+    public function update($params = array())
+    {
+        parent::setRequestParams($params);
+        return parent::update();
     }
 }

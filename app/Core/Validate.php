@@ -16,7 +16,7 @@ class Validate
     {
         foreach ($items as $item => $rules) {
             $value = $source[$item];
-            $this->proccess($source, $rules, $value);
+            $this->proccess($source, $item, $rules, $value);
         }
 
         if (empty($this->errors)) {
@@ -36,12 +36,12 @@ class Validate
         return $this->passed;
     }
 
-    protected function proccess($source, $rules, $value)
+    protected function proccess($source, $item, $rules, $value)
     {
-        foreach ($rules as $rule => $RequireValue) {
+        foreach ($rules as $rule => $ruleValue) {
             switch ($rule) {
                 case 'required':
-                    $this->required($value);
+                    $this->required($value, $item);
                     break;
                 case 'min':
                     $this->min($value, $ruleValue, $item);

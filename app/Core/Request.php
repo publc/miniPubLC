@@ -74,6 +74,23 @@ class Request
         return isset($_GET[$item]) ? $_GET[$item] : "";
     }
 
+    public function getParams()
+    {
+
+        if ($_SERVER[$this->server['method']] === "POST") {
+            if (!is_null($this->getAPIParams())) {
+                return $this->getAPIParams();
+            }
+            return $_POST;
+        }
+
+        if ($_SERVER[$this->server['method']] === "GET") {
+            return $_GET;
+        }
+
+        return;
+    }
+
     public function exists($type = "post")
     {
         switch ($type) {
@@ -108,26 +125,20 @@ class Request
         return true;
     }
 
-    public function validate($fields = array())
+    public function validate($params, $fields = array())
     {
-        if ($this->validateToken !== true) {
-            return;
-        }
+        // if ($this->validateToken !== true) {
+        //     return;
+        // }
 
         $validate = $this->container->validate;
+        $validate->check($params, $fields);
 
-        if ($this->isAPIRequest() === true) {
-            $params = $this->getAPIParams();
-            $validation = $validate->check($params, $fields);
+        if (!$validate->passed()) {
+            return $validate->errors();
         }
 
-        $validation = $validate->check($_POST, $fields);
-
-        if (!$validation->passed()) {
-            return $validation->errors();
-        }
-
-        return $validation->passed();
+        return $validate->passed();
     }
 
     protected function getHeaders()
