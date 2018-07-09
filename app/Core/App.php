@@ -101,8 +101,16 @@ class App
         $response = $this->container->response;
 
         if (is_string($callable)) {
-            $callable = '\App\Api\\' . $callable;
-            $call = new $callable;
+            $callable = explode('@', $callable);
+            if (count($callable) > 1) {
+                $callable[0] = '\App\Api\\' . $callable[0];
+                $callable[0] = new $callable[0];
+                array_unshift($params, $response);
+                return call_user_func_array($callable, $params);
+            }
+
+            $callable[0] = '\App\Api\\' . $callable[0];
+            $call = new $callable[0];
         }
 
         $request = json_decode(file_get_contents("php://input"));
@@ -129,8 +137,8 @@ class App
         }
 
         if ($method === 'post') {
-            $reqMethod = strtolower($data->method);
-            if (!empty($data->method) &&
+            $reqMethod = strtolower($request->method);
+            if (!empty($reqMethod) &&
                 ($reqMethod === 'put' || $reqMethod === 'patch' || $reqMethod === 'delete')) {
                 return $reqMethod;
             }

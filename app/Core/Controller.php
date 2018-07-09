@@ -29,10 +29,10 @@ class Controller
         return $model->get();
     }
 
-    protected function find($value)
+    protected function find($field, $value)
     {
         $model = $this->getModel();
-        return $model->find($value);
+        return $model->find($field, $value);
     }
 
     protected function create($params = array())
@@ -41,16 +41,16 @@ class Controller
         return $model->create($params);
     }
 
-    protected function update($params = array())
+    protected function update($filter, $params = array())
     {
         $model = $this->getModel();
-        return $model->update($params);
+        return $model->patch($filter, $params);
     }
 
     protected function delete($params = array())
     {
         $model = $this->getModel();
-        return $model->delete($params);
+        return $model->destroy($params);
     }
 
     protected function getModel($model = null)

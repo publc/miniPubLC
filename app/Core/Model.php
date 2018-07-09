@@ -81,9 +81,11 @@ class Model
 
     protected function delete()
     {
-        $stmt = "DELETE FROM table_name
-                WHERE condition;";
+        $this->stmt = "DELETE FROM $this->table ";
+        $this->prepareFilters(true);
         $this->db->query($this->stmt);
+        $this->bindFilters();
+        $this->cleanRequestParams();
         return $this->db->execute();
     }
 
@@ -141,8 +143,16 @@ class Model
         $this->stmt = rtrim($this->stmt, ', ');
     }
 
-    private function prepareFilters()
+    private function prepareFilters($table = false)
     {
+        if ($table === true) {
+            $this->stmt .= ' WHERE ' .
+                        $this->filters['filter'] .
+                        $this->filters['op'] . ':' .
+                        $this->filters['filter'];
+            return;
+        }
+
         if (count($this->filters) === 3) {
             $this->stmt .= ' WHERE t.' .
                         $this->filters['filter'] . ' ' .

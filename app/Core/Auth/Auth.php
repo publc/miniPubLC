@@ -2,6 +2,7 @@
 
 namespace App\Core\Auth;
 
+use Exception;
 use App\Core\App;
 use App\Core\Hash;
 use App\Core\Config;
@@ -33,6 +34,8 @@ class Auth extends Controller
     protected $response;
 
     protected $container;
+
+    protected $isLoggedIn = false;
 
     public function __construct()
     {
@@ -76,23 +79,22 @@ class Auth extends Controller
 
         if ($this->cookie->exists($cookieName) && !$this->session->exists($sessionName)) {
             $token = $this->cookie->get($cookieName);
-            $user = $this->user->find($token, "remember_token");
+            $user = $this->user->find($token, 'remember_token');
             $this->user->store();
         }
     }
 
     public function login()
     {
-
-        $params = $this->request->getParams();
+        $params = (array) $this->request->getParams();
         $fields = [
-            "email" => [
-                "required" => true,
-                "email" => true,
+            'email' => [
+                'required' => true,
+                'email' => true,
             ],
-            "password" => [
-                "required" => true,
-                "min" => 6
+            'password' => [
+                'required' => true,
+                'min' => 6
             ]];
 
         $validation = $this->request->validate($params, $fields);
@@ -102,16 +104,18 @@ class Auth extends Controller
             return $this->app->respond($response);
         }
 
-        $user = parent::find($params['email']);
+        $user = parent::find('email', $params['email']);
 
         if (!password_verify($params['password'], $user->password)) {
-            $response = $this->response->withStatus(400)->withJSON(['errors' => "Not matches with our records"]);
+            $response = $this->response->withStatus(400)->withJSON(['errors' => 'Not matches with our records']);
             return $this->app->respond($response);
         }
 
         $this->session->put('user', $user);
 
-        if (!empty($params['remember']) && $params['remember'] === "on") {
+        $this->isLoggedIn = true;
+
+        if (!empty($params['remember']) && $params['remember'] === 'on') {
             $this->remember();
         }
 
@@ -120,100 +124,146 @@ class Auth extends Controller
 
     public function register()
     {
-        if (!$this->validation->registration($this->request)) {
-            return;
+        $params = (array) $this->request->getParams();
+
+        $fields = [
+            'name' => [
+                'required' => true,
+                'min' => 2,
+                'max' => 45
+            ],
+            'email' => [
+                'required' => true,
+                'unique' => 'user',
+                'email' => true,
+            ],
+            'username' => [
+                'required' => true,
+                'min' => 2,
+                'max' => 45,
+                'unique' => 'user'
+            ],
+            'password' => [
+                'required' => true,
+                'min' => 6
+            ],
+            'confirm_password' => [
+                'required' => true,
+                'matches' => 'password'
+            ]];
+
+        $validation = $this->request->validate($params, $fields);
+
+        if ($validation !== true) {
+            $response = $this->response->withStatus(400)->withJSON(['errors' => $validation]);
+            return $this->app->respond($response);
         }
 
-        $fields = $this->registrationData($this->request);
+        $password = $this->hash->make($params['password']);
+        $dbParams = [
+            'name' => $params['name'],
+            'email' => $params['email'],
+            'username' => $params['username'],
+            'password' => $password,
+            'active' => 1,
+            'created_at' => date('Y-m-d H:i:s')
+        ];
 
-        if ($this->user->create($fields)) {
-            Session::flash("message", ["Registration Successfully"]);
+        try {
+            parent::create($dbParams);
+        } catch (Exception $e) {
+            return $this->app->respond(['errors' => 'Register proccess failed, try again later']);
         }
+
+        $user = parent::find('email', $params['email']);
+
+        $this->session->put('user', $user);
+
+        $this->isLoggedIn = true;
 
         return;
     }
 
     public function patch()
     {
-        if (!$this->validation->update($this->request)) {
-            return;
+        $user = $this->session->get('user');
+
+        $params = (array) $this->request->getParams();
+
+        $fields = [
+            'name' => [
+                'min' => 2,
+                'max' => 45
+            ],
+            'password' => [
+                'required' => true,
+                'min' => 6
+            ],
+            'confirm_password' => [
+                'required' => true,
+                'matches' => 'password'
+            ]];
+
+        $validation = $this->request->validate($params, $fields);
+
+        if ($validation !== true) {
+            $response = $this->response->withStatus(400)->withJSON(['errors' => $validation]);
+            return $this->app->respond($response);
         }
 
-        $fields = $this->updateData($this->request);
+        $password = $this->hash->make($params['password']);
 
-        if ($this->user->updateUser($fields)) {
-            Session::flash("message", ["Successfully Updated"]);
-        }
+        $dbParams = [
+            'name' => $params['name'],
+            'password' => $password,
+            'updated_at' => date('Y-m-d H:i:s')
+        ];
 
-        return;
-    }
-
-    protected function registrationData(Request $request)
-    {
-        return array(
-            "username" => $request->get("username"),
-            "email" => $request->get("email"),
-            "password" => Hash::make($request->get("password")),
-            "name" => $request->get("name"),
-            "active" => 1,
-            "created_at" => date("Y-m-d H:i:s")
-        );
-    }
-
-    protected function updateData(Request $request)
-    {
-        $userData = $this->user->getUserData();
-        $username = (!empty($request->get("username"))) ? $request->get("username") : $userData->username;
-        $email = (!empty($request->get("email"))) ? $request->get("email") : $userData->email;
-        $name = (!empty($request->get("name"))) ? $request->get("name") : $userData->name;
-        return array(
-            "username" => $username,
-            "email" => $email,
-            "name" => $name,
-            "updated_at" => date("Y-m-d H:i:s")
-        );
-    }
-
-    public function updatePassword()
-    {
-        if (!$this->validation->updatePassword($this->request)) {
-            return;
-        }
-
-        $userData = $this->user->getUserData();
-
-        if (!$userData || !$this->validation->validatePassword($userData, $this->request)) {
-            Session::flash("message", ["Invalid params. review and try again"]);
-            return false;
-        }
-
-        $fields = $this->updatePasswordData($this->request);
-
-
-        if ($this->user->updatePassword($fields)) {
-            Session::flash("message", ["Successfully Updated"]);
+        try {
+            parent::update($user->email, $dbParams);
+        } catch (Exception $e) {
+            return $this->app->respond(['errors' => 'Register proccess failed, try again later']);
         }
 
         return;
     }
 
-    protected function updatePasswordData(Request $request)
+    public function delete($params = array())
     {
-        return array(
-            "password" => Hash::make($request->get("new_password")),
-            "updated_at" => date("Y-m-d H:i:s")
-        );
+        $user = $this->session->get('user');
+
+        $params = (array) $this->request->getParams();
+        $fields = [
+            'email' => [
+                'required' => true,
+                'email' => true,
+            ]];
+
+        $validation = $this->request->validate($params, $fields);
+        if ($validation !== true) {
+            $response = $this->response->withStatus(400)->withJSON(['errors' => $validation]);
+            return $this->app->respond($response);
+        }
+
+        $filter = $params['email'];
+        try {
+            parent::delete($filter);
+        } catch (Exception $e) {
+            return $this->app->respond(['errors' => 'Register proccess failed, try again later']);
+        }
+
+        return;
     }
 
-    public function validate()
+    public function isLoggedIn()
     {
-        return $this->user->isLoggedIn();
+        return $this->isLoggedIn;
     }
 
     public function logout()
     {
-        $this->user->logout();
-        Router::redirect("/");
+        $this->session->delete('user');
+        return;
     }
 
     public function remember()
@@ -230,13 +280,13 @@ class Auth extends Controller
         $token = $this->hash->unique();
 
         $params = array(
-            "params" => array(
-                "remember_token" => $token
+            'params' => array(
+                'remember_token' => $token
             ),
-            "filters" => array(
-                "filter" => "email",
-                "op" => "=",
-                "value" => $email
+            'filters' => array(
+                'filter' => 'email',
+                'op' => '=',
+                'value' => $email
             )
         );
 

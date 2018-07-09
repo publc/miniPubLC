@@ -14,8 +14,6 @@ class HomeController extends Controller
 
     public function index($response)
     {
-        // // $user1 = $this->get();
-        // // $user2 = $this->getModel()->find('deveplon');
         // $mail = new Mail;
         // $message = $mail->send('deveplon@gmail.com', 'Say Hello');
         $token = new Hash;

@@ -97,14 +97,15 @@ class Validate
 
     protected function unique($value, $ruleValue, $item)
     {
-        $model = "\App\Models\\" . ucwords($value);
-        $model = new $model;
+        $model = "\App\Models\\" . ucwords($ruleValue);
         if (!class_exists($model)) {
             $this->addError("No model for this validation");
+            return;
         }
 
-        $check = $model->check($item, $value);
-        if ($check > 0) {
+        $model = new $model;
+        $check = $model->find($item, $value);
+        if ($check !== false) {
             $this->addError("{$item} already exists");
         }
         return;
