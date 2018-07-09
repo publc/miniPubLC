@@ -13,16 +13,15 @@ class HomeController extends Controller
 
     public function index($response)
     {
-
         // // $user1 = $this->get();
         // // $user2 = $this->getModel()->find('deveplon');
         // $mail = new Mail;
         // $message = $mail->send('deveplon@gmail.com', 'Say Hello');
-        // return $response->view('home')
-        //     ->with([
-        //         'greetings' => 'Hello World From MiniPublc!',
-        //         'message' => $message
-        //     ])
-        //     ->layout('home');
+        return $response->view('home')
+            ->with([
+                'greetings' => 'Hello World From MiniPublc!',
+                'message' => "Yeaaaaah loooooad views baby"
+            ])
+            ->layout('home');
     }
 }

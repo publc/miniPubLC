@@ -25,9 +25,12 @@ class Router
 
     public function setPath($path = '/')
     {
-        if ($uri === strtolower($path)) {
-            $this->path = $uri;
-            return;
+
+        foreach ($this->routes as $uri => $value) {
+            if ($uri === strtolower($path)) {
+                $this->path = $uri;
+                return;
+            }
         }
 
         foreach ($this->expectedParams as $uri => $value) {
@@ -136,6 +139,10 @@ class Router
 
     public function getParams()
     {
+        if (is_null($this->expectedParams[$this->path])) {
+            return [];
+        }
+
         if (is_null($this->params[$this->path])) {
             throw new RouteNotFoundException('No route register for this' . $this->path);
         }
