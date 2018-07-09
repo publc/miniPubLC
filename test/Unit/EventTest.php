@@ -4,6 +4,7 @@ namespace Test\Unit;
 
 use Test\Stubs\EventStub;
 use PHPUnit\Framework\TestCase;
+use Test\Stubs\EventStubNoName;
 
 class EventTest extends TestCase
 {
@@ -12,6 +13,14 @@ class EventTest extends TestCase
     {
         $event = new EventStub;
 
-        $this->assertTrue(true);
+        $this->assertEquals('UserSignedUp', $event->getName());
+    }
+
+    /** @test */
+    public function defaultEventNameOfClassName()
+    {
+        $event = new EventStubNoName;
+
+        $this->assertEquals('EventStubNoName', $event->getName());
     }
 }
