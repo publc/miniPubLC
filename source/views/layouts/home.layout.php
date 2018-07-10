@@ -6,5 +6,7 @@
 </head>
 <body>
     <?php require_once $view; ?>
+
+    <script src="js/app.js"></script>
 </body>
 </html>

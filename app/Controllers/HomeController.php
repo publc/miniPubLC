@@ -14,11 +14,6 @@ class HomeController extends Controller
 
     public function index($response)
     {
-        // $mail = new Mail;
-        // $message = $mail->send('deveplon@gmail.com', 'Say Hello');
-        $token = new Hash;
-        $test = $token->make('vale1988');
-        var_dump($test);die;
         return $response->view('home')
             ->with([
                 'greetings' => 'Hello World From MiniPublc!',
