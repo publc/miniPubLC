@@ -8,31 +8,36 @@ class AuthAPI extends Auth
 {
     public function login()
     {
-        parent::login();
-        return $this->response();
+        $response = parent::login();
+        return $this->response($response);
     }
 
     public function register()
     {
-        parent::register();
-        return $this->response();
+        $response = parent::register();
+        return $this->response($response);
     }
 
     public function patch()
     {
-        parent::patch();
-        return $this->response();
+        $response = parent::patch();
+        return $this->response($response);
     }
 
     public function delete($params = array())
     {
-        parent::delete();
-        return $this->response();
+        $response = parent::delete();
+        return $this->response($response);
     }
 
-    protected function response()
+    public function logout()
     {
-        $response = $this->response->withStatus(200)->withJSON(['errors' => false]);
-        return $this->app->respond($response);
+        $response = parent::logout();
+        return $this->response($response);
+    }
+
+    protected function response($response)
+    {
+        return $this->app->respond($this->response->withStatus(200)->withJSON($response));
     }
 }

@@ -4,6 +4,7 @@ namespace App\Core\Auth;
 
 use Exception;
 use App\Core\App;
+use App\Core\JWT;
 use App\Core\Hash;
 use App\Core\Config;
 use App\Core\Cookie;
@@ -35,6 +36,8 @@ class Auth extends Controller
 
     protected $container;
 
+    protected $jwt;
+
     protected $isLoggedIn = false;
 
     public function __construct()
@@ -60,6 +63,9 @@ class Auth extends Controller
             },
             'response' => function () {
                 return new Response;
+            },
+            'jwt' => function () {
+                return new JWT;
             }
         ]);
 
@@ -70,23 +76,13 @@ class Auth extends Controller
         $this->session = $this->container->session;
         $this->hash = $this->container->hash;
         $this->response = $this->container->response;
-    }
-
-    public function autologin()
-    {
-        $cookieName = $this->config->get('remember')->cookie_name;
-        $sessionName = $this->config->get('session')->session_name;
-
-        if ($this->cookie->exists($cookieName) && !$this->session->exists($sessionName)) {
-            $token = $this->cookie->get($cookieName);
-            $user = $this->user->find($token, 'remember_token');
-            $this->user->store();
-        }
+        $this->jwt = $this->container->jwt;
     }
 
     public function login()
     {
         $params = (array) $this->request->getParams();
+
         $fields = [
             'email' => [
                 'required' => true,
@@ -111,15 +107,21 @@ class Auth extends Controller
             return $this->app->respond($response);
         }
 
-        $this->session->put('user', $user);
-
-        $this->isLoggedIn = true;
-
         if (!empty($params['remember']) && $params['remember'] === 'on') {
-            $this->remember();
+            $this->remember($user);
         }
 
-        return;
+        $token = $this->generateToken($user);
+
+        $response = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+            'token' => $token
+        ];
+
+        return $response;
     }
 
     public function register()
@@ -136,12 +138,6 @@ class Auth extends Controller
                 'required' => true,
                 'unique' => 'user',
                 'email' => true,
-            ],
-            'username' => [
-                'required' => true,
-                'min' => 2,
-                'max' => 45,
-                'unique' => 'user'
             ],
             'password' => [
                 'required' => true,
@@ -163,7 +159,6 @@ class Auth extends Controller
         $dbParams = [
             'name' => $params['name'],
             'email' => $params['email'],
-            'username' => $params['username'],
             'password' => $password,
             'active' => 1,
             'created_at' => date('Y-m-d H:i:s')
@@ -177,15 +172,26 @@ class Auth extends Controller
 
         $user = parent::find('email', $params['email']);
 
-        $this->session->put('user', $user);
+        $token = $this->generateToken($user);
 
-        $this->isLoggedIn = true;
+        $response = [
+            'name' => $user->name,
+            'email' => $user->email,
+            'created_at' => $user->created_at,
+            'updated_at' => $user->updated_at,
+            'token' => $token
+        ];
 
-        return;
+        return $response;
     }
 
     public function patch()
     {
+        $checkToken = $this->checkToken();
+        if ($checkToken !== true) {
+            return $checkToken;
+        }
+
         $user = $this->session->get('user');
 
         $params = (array) $this->request->getParams();
@@ -220,16 +226,21 @@ class Auth extends Controller
         ];
 
         try {
-            parent::update($user->email, $dbParams);
+            parent::update($user->email, 'email', $dbParams);
         } catch (Exception $e) {
             return $this->app->respond(['errors' => 'Register proccess failed, try again later']);
         }
 
-        return;
+        return ['errors' => false];
     }
 
     public function delete($params = array())
     {
+        $checkToken = $this->checkToken();
+        if ($checkToken !== true) {
+            return $checkToken;
+        }
+
         $user = $this->session->get('user');
 
         $params = (array) $this->request->getParams();
@@ -262,36 +273,58 @@ class Auth extends Controller
 
     public function logout()
     {
-        $this->session->delete('user');
+        $token = $this->generateToken($user, false, true);
+        return [
+            'token' => $token
+        ];
+    }
+
+    protected function remember($user)
+    {
+        $token = $this->generateToken($user, true);
+        $cookieName = $this->config->get('remember')->name;
+
+        $params = [
+            'remember_token' => $token
+        ];
+
+        parent::update($user->email, $params);
+        $this->cookie->put($cookieName, $token);
         return;
     }
 
-    public function remember()
+    protected function checkToken($remember = false)
     {
-        $token = $this->session->get('user')->remember_token;
-        $email = $this->session->get('user')->email;
-        $cookieName = $this->container->config->get('remember')->cookie_name;
+        if ($remember === false) {
+            return $this->request->validateToken();
+        }
 
-        if (!is_null($token)) {
-            $this->cookie->put($cookieName, $token);
+        $config = $this->config->get('remember');
+        $cookie = $this->cookie->get($config->name);
+
+        if (!$cookie) {
             return;
         }
 
-        $token = $this->hash->unique();
+        return $this->validateToken($cookie);
+    }
 
-        $params = array(
-            'params' => array(
-                'remember_token' => $token
-            ),
-            'filters' => array(
-                'filter' => 'email',
-                'op' => '=',
-                'value' => $email
-            )
-        );
+    protected function generateToken($user, $remember = false, $logout = false)
+    {
+        $jwt = $this->config->get('jwt');
+        $exp = $this->config->get('remember');
+        $payload = (array) $jwt->payload;
+        $payload['userId'] = $user->id;
+        $payload['exp'] = ($logout === true) ? time() - 60 : (($remember === true) ? $exp->exp : $payload['exp']);
+        return $this->jwt::encode($payload, $jwt->secret);
+    }
 
-        parent::update($params);
-        $this->cookie->put($cookieName, $token);
-        return;
+    protected function validateToken($token)
+    {
+        try {
+            $this->jwt::decode($token, $this->config->get('jwt')->secret, ['HS256']);
+        } catch (Exception $e) {
+            return $e->getMessage();
+        }
     }
 }

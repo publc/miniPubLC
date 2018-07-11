@@ -3,7 +3,6 @@
 namespace App\Controllers;
 
 use App\Core\Hash;
-use App\Core\Token;
 use App\Core\Config;
 use App\Core\Session;
 use App\Core\Controller;

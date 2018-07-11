@@ -37,11 +37,14 @@ class Request
     public function __construct()
     {
         $this->container = new Container([
-            'token' => function () {
-                return new Token;
+            'config' => function () {
+                return new Config;
             },
             'validate' => function () {
                 return new Validate;
+            },
+            'jwt' => function () {
+                return new JWT;
             }
         ]);
     }
@@ -127,10 +130,6 @@ class Request
 
     public function validate($params, $fields = array())
     {
-        // if ($this->validateToken !== true) {
-        //     return;
-        // }
-
         $validate = $this->container->validate;
         $validate->check($params, $fields);
 
@@ -139,6 +138,37 @@ class Request
         }
 
         return $validate->passed();
+    }
+
+    public function validateToken()
+    {
+        $validate = $this->getTokenContent();
+
+        if (is_object($validate) && !empty($validate->iat)) {
+            return true;
+        }
+
+        return $validate;
+    }
+
+    public function getTokenContent()
+    {
+        $token = $this->getToken();
+
+        if (is_null($token)) {
+            return 'No token provided';
+        }
+
+        $jwt = $this->container->jwt;
+        $config = $this->container->config;
+
+        try {
+            $payload = $jwt::decode($token, $config->get('jwt')->secret, ['HS256']);
+        } catch (Exception $e) {
+            return $e->getMessage();
+        }
+
+        return $payload;
     }
 
     protected function getHeaders()
@@ -152,28 +182,20 @@ class Request
         return isset($headers['HTTP_X_REQUESTED_WITH']) ? $headers['HTTP_X_REQUESTED_WITH'] : null;
     }
 
-    protected function validateToken()
-    {
-        $token = $this->getToken();
-        $tokenClass = $this->container->token;
-
-        if (!$tokenClass->check($token)) {
-            return;
-        }
-        return true;
-    }
-
     protected function getToken()
     {
         if ($this->isAPIRequest() === true) {
-            $params = $this->getAPIParams();
-            return $params['token'];
+            $headers = $this->getHeaders();
         }
 
-        if (!$this->exists()) {
+        if (empty($headers['Authorization'])) {
             return;
         }
 
-        return $this->get("token");
+        $token = trim($headers['Authorization']);
+
+        if (preg_match('/Bearer\s(\S+)/', $token, $match)) {
+            return $match[1];
+        }
     }
 }
