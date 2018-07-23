@@ -25,7 +25,6 @@ class Router
 
     public function setPath($path = '/')
     {
-
         foreach ($this->routes as $uri => $value) {
             if ($uri === strtolower($path)) {
                 $this->path = $uri;

@@ -19,7 +19,7 @@ class Controller
 
         $model = "\App\Models\\" . ucwords($this->model);
         if (class_exists($model)) {
-            $this->modelClass = new $model;
+            $this->modelClass = new $model();
         }
     }
 
@@ -61,7 +61,7 @@ class Controller
 
         $model = "\App\Models\\" . ucwords($model);
         if (class_exists($model)) {
-            return new $model;
+            return new $model();
         }
     }
 }
