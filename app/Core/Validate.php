@@ -103,7 +103,7 @@ class Validate
             return;
         }
 
-        $model = new $model;
+        $model = new $model();
         $check = $model->find($item, $value);
         if ($check !== false) {
             $this->addError("{$item} already exists");
